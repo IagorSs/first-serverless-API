@@ -1,0 +1,89 @@
+service: sra-tutorial
+frameworkVersion: '2'
+
+org: iagor
+app: serverless-tutorial
+
+plugins:
+  - "@serverless/enterprise-plugin"
+  - serverless-pseudo-parameters
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  lambdaHashingVersion: 20201221
+  profile: ${opt:profile, "treinamento-lambda"}
+  region: ${opt:region, "us-east-2"} # sls deploy --region us-east-2
+  stage: ${opt:stage, "dev"} # sls deploy --stage test || qa, dev, prod
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:DeleteItem
+        - dynamodb:UpdateItem
+      Resource: arn:aws:dynamodb:${self:provider.region}:#{AWS::AccountId}:table/${self:custom.DynamoDBTableName}
+
+functions:
+  getAllUsers:
+    handler: getUser.handler
+    events:
+      - http:
+          path: users
+          method: get
+          cors: true
+    environment:
+      TABLE_NAME: ${self:custom.DynamoDBTableName}
+  updateUser:
+    handler: updateUser.handler
+    events:
+      - http:
+          path: users/{id}
+          method: PUT
+          cors: true
+    environment:
+      TABLE_NAME: ${self:custom.DynamoDBTableName}
+  deleteUser:
+    handler: deleteUser.handler
+    events:
+      - http:
+          path: users/{id}
+          method: DELETE
+          cors: true
+    environment:
+      TABLE_NAME: ${self:custom.DynamoDBTableName}
+  createUser:
+    handler: createUser.handler
+    events:
+      - http:
+          path: users/{id}
+          method: POST
+          cors: true
+    environment:
+      TABLE_NAME: ${self:custom.DynamoDBTableName}
+  getUser:
+    handler: getUser.handler
+    events:
+      - http:
+          path: users/{id}
+          method: get
+          cors: true
+    environment:
+      TABLE_NAME: ${self:custom.DynamoDBTableName}
+custom:
+  DynamoDBTableName: ${self:service}-treinamento-lambda-${self:provider.stage}
+
+resources:
+  Resources:
+    myDynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:custom.DynamoDBTableName}
